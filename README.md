@@ -1,16 +1,30 @@
-## Welcome to SKetchFabShowAndHide 
+# Sketchfab Part Lab
 
-# Custom viewer for Sketfab utilizing the Viewer API to allow showing and hiding of the model's parts
+Viewer-API Playground: Modelle per URL/Favorit laden, Teile im Hierarchy-Tree zeigen/verstecken, per Klick picken, transformieren, annotieren und inspecten.
 
-Example Running Here: https://croisened.github.io/SketchFabShowAndHide/?id=784e95f4f22545199be7e165af6437f8
+## Start
 
+Statisch hosten oder lokal öffnen:
 
-To use this project you only need 3 files...
+```bash
+python3 -m http.server 8000
+```
 
-- index.html (This file just has the HTML scaffolding to house the Sketchfab API viewer)
-- style.css (This file contains the bootstrap based layout information)
-- sf_showhide.js (This file contains all the code to initialize the Sketchfab viewer, process all the Matrix Transforms and ultimatley generate the treeview with show and hide buttons for each object in the scene)
+Dann `http://localhost:8000` öffnen.
 
-In the javascript file there is an "id" variable that you can change to be any model on Sketchfab based on that model's guid you can see in the URL for any given model.  This acts as default model to load in the event there is no "id" variable set in the querystring for the HTML page so you can simply chage it there as well to view any model you choose.
+Live (nach Deploy): Vercel-Projekt `sketchfabshowandhide`.
 
-Follow on Twitter @FullyCroisened
+## Features
+
+- Favoriten gruppiert (`Cars/BMW/E46`, `Cars/Fiat`, `Electronics/Apple/Mac Mini`) plus freies URL/UID-Feld
+- Scene-Graph Tree mit Show/Hide inkl. Kinder
+- Pick-Modi: Auswählen · Show/Hide · Annotieren
+- Auswahl-Panel: Solo, Translate/Rotate, Matrix-Reset
+- Kamera: Recenter, Focus, Autospin-Emulation, FOV
+- Look: Wireframe, Shading, Post-FX, Background, Screenshot
+- Materialien highlighten, Annotations setzen/goto/löschen
+- `?id=<uid>` Deep-Link
+
+## Hinweis
+
+Die sichtbaren Gruppen kommen aus der Modell-Hierarchie (MatrixTransform-Nodes). Eigene logische Gruppen wären nur UI-seitig möglich.

@@ -1,29 +1,176 @@
-<!-- Learn about this code on sketchfab: https://sketchfab.com/developers/viewer -->
-
-<!-- ALso find at : https://github.com/Croisened/SketchFabShowAndHide -->
-
+<!DOCTYPE html>
+<html lang="de">
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sketchfab Part Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Oswald:wght@500;600&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-
-  <script type="text/javascript" src="https://static.sketchfab.com/api/sketchfab-viewer-1.9.0.js"></script>
-
-
+  <script src="https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js"></script>
 </head>
-
-  <body>
-    <div class="py-5 min-height-90vh" style="min-height:90vh; background-color:#272425!important;">
-      <div class="container">
-        <div class="row ">
-          <div class="d-flex flex-column col-md-8 mb-3">
-            <iframe id="api-frame" width="100%" height="auto" allowfullscreen="" mozallowfullscreen="true" webkitallowfullscreen="true" class="mb-3 rounded shadow-lg embed-responsive embed-responsive-4by3 border border-info" loading="lazy"></iframe>
-          </div>
-          <div class="d-flex flex-column col-md-4 mx-auto">
-            <div class="navTree" id="navTree">
-            </div>
-          </div>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">SPL</span>
+        <div>
+          <h1>Sketchfab Part Lab</h1>
+          <p>Viewer-API Showroom · Pick · Hide · Transform</p>
         </div>
       </div>
-    </div>
-  </body>
 
-    <script src="sf_showhide.js"></script>  
+      <form class="load-form" id="loadForm">
+        <label class="field">
+          <span>Favorit</span>
+          <select id="favoriteSelect"></select>
+        </label>
+        <label class="field grow">
+          <span>Modell-URL oder UID</span>
+          <input id="modelInput" type="text" placeholder="https://sketchfab.com/3d-models/… oder UID" autocomplete="off" spellcheck="false">
+        </label>
+        <button type="submit" class="btn primary">Laden</button>
+      </form>
+    </header>
+
+    <main class="workspace">
+      <section class="stage">
+        <div class="viewer-shell">
+          <div id="viewerHost" class="viewer-host">
+            <iframe id="api-frame" title="Sketchfab Viewer" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
+          </div>
+          <div class="stage-overlay">
+            <div class="pill" id="loadStatus">Bereit</div>
+            <div class="pill muted" id="pickHint">Klick = Auswahl · Drag = Orbit</div>
+          </div>
+        </div>
+
+        <div class="toolbar" id="mainToolbar">
+          <div class="tool-group">
+            <span class="tool-label">Pick-Modus</span>
+            <div class="segmented" id="pickMode">
+              <button type="button" data-mode="select" class="is-active">Auswählen</button>
+              <button type="button" data-mode="toggle">Show/Hide</button>
+              <button type="button" data-mode="annotate">Annotieren</button>
+            </div>
+          </div>
+          <div class="tool-group">
+            <span class="tool-label">Kamera</span>
+            <button type="button" class="btn" id="btnRecenter">Recenter</button>
+            <button type="button" class="btn" id="btnFocus">Focus</button>
+            <button type="button" class="btn" id="btnSpin">Autospin</button>
+            <label class="inline-field">
+              FOV
+              <input type="range" id="fovRange" min="20" max="90" value="45">
+            </label>
+          </div>
+          <div class="tool-group">
+            <span class="tool-label">Look</span>
+            <button type="button" class="btn" id="btnWireframe">Wireframe</button>
+            <select id="shadingSelect" class="select-compact">
+              <option value="pbr">PBR</option>
+              <option value="classic">Classic</option>
+              <option value="matcap">Matcap</option>
+            </select>
+            <button type="button" class="btn" id="btnPost">Post FX</button>
+            <button type="button" class="btn" id="btnBg">BG Dark</button>
+            <button type="button" class="btn" id="btnShot">Screenshot</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="side">
+        <nav class="tabs" id="sideTabs">
+          <button type="button" data-tab="parts" class="is-active">Teile</button>
+          <button type="button" data-tab="selected">Auswahl</button>
+          <button type="button" data-tab="materials">Material</button>
+          <button type="button" data-tab="annotations">Notes</button>
+          <button type="button" data-tab="info">Info</button>
+        </nav>
+
+        <div class="tab-panels">
+          <section class="panel is-active" data-panel="parts">
+            <div class="panel-head">
+              <input id="nodeFilter" type="search" placeholder="Teile filtern…">
+              <div class="row-actions">
+                <button type="button" class="btn tiny" id="btnExpandAll">Aufklappen</button>
+                <button type="button" class="btn tiny" id="btnCollapseAll">Zuklappen</button>
+                <button type="button" class="btn tiny" id="btnShowAll">Alles an</button>
+              </div>
+            </div>
+            <div class="tree-scroll" id="navTree"></div>
+          </section>
+
+          <section class="panel" data-panel="selected">
+            <div class="empty" id="selectionEmpty">Noch kein Teil gewählt. Im Viewer klicken oder in der Liste auswählen.</div>
+            <div id="selectionPanel" class="hidden">
+              <h2 id="selName">—</h2>
+              <dl class="meta">
+                <div><dt>instanceID</dt><dd id="selId">—</dd></div>
+                <div><dt>Typ</dt><dd id="selType">—</dd></div>
+                <div><dt>Parent</dt><dd id="selParent">—</dd></div>
+                <div><dt>Kinder</dt><dd id="selChildren">—</dd></div>
+              </dl>
+              <div class="row-actions">
+                <button type="button" class="btn primary" id="btnSelShow">Show</button>
+                <button type="button" class="btn danger" id="btnSelHide">Hide</button>
+                <button type="button" class="btn" id="btnSelSolo">Solo</button>
+                <button type="button" class="btn" id="btnSelReset">Reset Matrix</button>
+              </div>
+              <div class="transform-grid">
+                <h3>Verschieben</h3>
+                <div class="nudge">
+                  <button type="button" data-axis="x" data-dir="-1" class="btn tiny nudge-btn">−X</button>
+                  <button type="button" data-axis="x" data-dir="1" class="btn tiny nudge-btn">+X</button>
+                  <button type="button" data-axis="y" data-dir="-1" class="btn tiny nudge-btn">−Y</button>
+                  <button type="button" data-axis="y" data-dir="1" class="btn tiny nudge-btn">+Y</button>
+                  <button type="button" data-axis="z" data-dir="-1" class="btn tiny nudge-btn">−Z</button>
+                  <button type="button" data-axis="z" data-dir="1" class="btn tiny nudge-btn">+Z</button>
+                </div>
+                <h3>Rotieren</h3>
+                <div class="nudge">
+                  <button type="button" data-rot="x" data-dir="-1" class="btn tiny rotate-btn">−RX</button>
+                  <button type="button" data-rot="x" data-dir="1" class="btn tiny rotate-btn">+RX</button>
+                  <button type="button" data-rot="y" data-dir="-1" class="btn tiny rotate-btn">−RY</button>
+                  <button type="button" data-rot="y" data-dir="1" class="btn tiny rotate-btn">+RY</button>
+                  <button type="button" data-rot="z" data-dir="-1" class="btn tiny rotate-btn">−RZ</button>
+                  <button type="button" data-rot="z" data-dir="1" class="btn tiny rotate-btn">+RZ</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" data-panel="materials">
+            <div class="panel-head">
+              <p class="hint">Materialien des geladenen Modells. Klick hebt hervor.</p>
+            </div>
+            <ul class="material-list" id="materialList"></ul>
+          </section>
+
+          <section class="panel" data-panel="annotations">
+            <div class="panel-head">
+              <p class="hint">Pick-Modus „Annotieren“, dann aufs Modell klicken.</p>
+              <button type="button" class="btn tiny danger" id="btnClearAnnotations">Alle löschen</button>
+            </div>
+            <ul class="anno-list" id="annotationList"></ul>
+          </section>
+
+          <section class="panel" data-panel="info">
+            <dl class="meta stacked" id="infoMeta">
+              <div><dt>Modell</dt><dd id="infoTitle">—</dd></div>
+              <div><dt>UID</dt><dd id="infoUid">—</dd></div>
+              <div><dt>Nodes</dt><dd id="infoNodes">—</dd></div>
+              <div><dt>Materials</dt><dd id="infoMaterials">—</dd></div>
+              <div><dt>API</dt><dd>Viewer 1.12.1</dd></div>
+            </dl>
+            <pre class="log" id="eventLog"></pre>
+          </section>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="sf_showhide.js"></script>
+</body>
+</html>
