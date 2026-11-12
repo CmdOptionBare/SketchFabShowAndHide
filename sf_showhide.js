@@ -579,6 +579,22 @@
     return ids;
   }
 
+  function collectAncestors(instanceID) {
+    const ids = [];
+    const byId = {};
+    state.officialNodes.forEach((node) => {
+      byId[node.instanceID] = node;
+    });
+    let current = byId[instanceID];
+    const guard = new Set();
+    while (current && current.parentID && !guard.has(current.parentID)) {
+      guard.add(current.parentID);
+      ids.push(current.parentID);
+      current = byId[current.parentID];
+    }
+    return ids;
+  }
+
   function markHiddenUi(instanceID, hidden) {
     collectDescendants(instanceID).forEach((id) => {
       if (hidden) state.hiddenIds.add(id);
@@ -666,20 +682,39 @@
     log(`Auswahl: ${node.name || instanceID}`);
   }
 
+  function setNodeVisibility(instanceID, visible) {
+    if (!state.api) return;
+    if (visible) {
+      state.api.show(instanceID);
+      state.hiddenIds.delete(instanceID);
+    } else {
+      state.api.hide(instanceID);
+      state.hiddenIds.add(instanceID);
+    }
+    const hideBtn = el.navTree.querySelector(`button.Hide[data-instance="${instanceID}"]`);
+    if (hideBtn) hideBtn.classList.toggle("is-off", !visible);
+    const row = el.navTree.querySelector(`.node-row[data-instance="${instanceID}"]`);
+    if (row) row.classList.toggle("is-hidden-state", !visible);
+  }
+
   function soloSelection() {
     if (state.selectedId == null) return;
     if (!state.soloPrevHidden) {
       state.soloPrevHidden = new Set(state.hiddenIds);
+      const keep = new Set([
+        ...collectAncestors(state.selectedId),
+        ...collectDescendants(state.selectedId)
+      ]);
+      // Per-node visibility only — cascading show/hide would re-open siblings.
       state.officialNodes.forEach((node) => {
-        if (node.instanceID !== state.selectedId && !collectDescendants(state.selectedId).includes(node.instanceID)) {
-          hideNode(node.instanceID);
-        }
+        setNodeVisibility(node.instanceID, keep.has(node.instanceID));
       });
-      showNode(state.selectedId);
       log("Solo-Modus an");
     } else {
-      showAllNodes();
-      state.soloPrevHidden.forEach((id) => hideNode(id));
+      const previousHidden = state.soloPrevHidden;
+      state.officialNodes.forEach((node) => {
+        setNodeVisibility(node.instanceID, !previousHidden.has(node.instanceID));
+      });
       state.soloPrevHidden = null;
       log("Solo-Modus aus");
     }
@@ -904,7 +939,7 @@
       if (!state.api) return;
       state.spinning = !state.spinning;
       event.currentTarget.classList.toggle("is-active", state.spinning);
-      // Autospin is init-only on many versions; emulate via camera orbit fallback note.
+      // Autospin is init-only on many versions; emulate a stable orbit around the look-at target.
       state.api.getCameraLookAt((err, camera) => {
         if (err) return;
         if (!state.spinning) return;
@@ -912,11 +947,17 @@
           if (!state.spinning || !state.api) return;
           state.api.getCameraLookAt((e2, cam) => {
             if (e2 || !cam) return;
-            const pos = cam.position.slice();
+            const target = cam.target;
+            const relX = cam.position[0] - target[0];
+            const relY = cam.position[1] - target[1];
+            const relZ = cam.position[2] - target[2];
             const angle = 0.03;
-            const x = pos[0] * Math.cos(angle) - pos[1] * Math.sin(angle);
-            const y = pos[0] * Math.sin(angle) + pos[1] * Math.cos(angle);
-            state.api.setCameraLookAt([x, y, pos[2]], cam.target, 0.2, () => {
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            const nextX = target[0] + (relX * cos - relY * sin);
+            const nextY = target[1] + (relX * sin + relY * cos);
+            const nextZ = target[2] + relZ;
+            state.api.setCameraLookAt([nextX, nextY, nextZ], target, 0.2, () => {
               if (state.spinning) setTimeout(tick, 220);
             });
           });
