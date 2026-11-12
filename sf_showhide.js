@@ -46,6 +46,16 @@
           uid: "894b0e5cc5404646988521d0255552f0",
           title: "BMW E46 3 Series",
           url: "https://sketchfab.com/3d-models/bmw-e46-3-series-894b0e5cc5404646988521d0255552f0"
+        },
+        {
+          uid: "7846a8c9431648c1857546632c8ffa3c",
+          title: "BMW 3 Series E46 (1998–2002)",
+          url: "https://sketchfab.com/3d-models/bmw-3-series-e46-1998-2002-7846a8c9431648c1857546632c8ffa3c"
+        },
+        {
+          uid: "2e32a3e273ab482b83970603539de06a",
+          title: "BMW 3 Series E46 (1998–2006)",
+          url: "https://sketchfab.com/3d-models/bmw-3-series-e46-1998-2006-2e32a3e273ab482b83970603539de06a"
         }
       ]
     },
